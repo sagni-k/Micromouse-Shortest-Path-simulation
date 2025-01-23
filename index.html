@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Micromouse Shortest Path Simulation</title>
+    <style>
+        html{
+            background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+            height: 100%;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+            
+
+        }
+        
+
+         .text{
+            height: 60px;
+            width: 225px;
+            background-color: #db941a;
+            padding:20px;
+            border-radius: 10px;
+            margin-top: 50px;
+            border:2px solid black;
+            
+            
+            
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(10, 40px);
+            gap: 0px;
+            margin-bottom: 20px;
+            background-color: #f0f0f0;
+        }
+
+        .cell {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #000000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .cell.selected {
+            background-color: lightgreen;
+        }
+
+        .cell.target {
+            background-color: lightcoral;
+        }
+
+        .cell.obstacle {
+            background-color: gray;
+        }
+
+        .cell.path {
+            background-color: lightblue;
+        }
+
+        .cell.visited {
+            background-color: #f0f0f0;
+        }
+
+        button {
+            margin: 10px;
+            padding: 10px 15px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: 2px solid black;
+            background-color:linear-gradient(135deg, #ff7eb3, #ff758c) ;
+        }
+        button:hover {
+    background: linear-gradient(135deg, #d4bfc2, #cf8e97); /* Darker gradient on hover */
+}
+    </style>
+</head>
+<body>
+    <h1>Micromouse Shortest Path Simulation</h1>
+   
+        
+        <div class="grid" id="grid"></div>
+        
+    
+        
+   
+    <div class="grid" id="grid"></div>
+    <div><button id="setEntry">Set Entry Square</button>
+        <button id="setTarget">Set Target Square</button>
+        <button id="setObstacles">Set Obstacles</button>
+        <button id="simulate">Simulate</button>
+    </div>
+    <div class="text">hi,this is a simulation made as an assignment in AI Class taken by
+        Dr.Suman Deb by 21UCS083(Sagnik Karmakar)
+    </div>
+    
+
+    <script>
+        const gridElement = document.getElementById('grid');
+        const rows = 10;
+        const cols = 10;
+        let mode = "entry";
+        let entrySquare = null;
+        let targetSquare = null;
+        let obstacles = new Set();
+
+        const grid = [];
+        for (let i = 0; i < rows; i++) {
+            grid[i] = [];
+            for (let j = 0; j < cols; j++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.row = i;
+                cell.dataset.col = j;
+                gridElement.appendChild(cell);
+                grid[i][j] = cell;
+            }
+        }
+
+        function resetGridClasses() {
+            grid.flat().forEach(cell => {
+                if (!cell.classList.contains('target') && !cell.classList.contains('selected') && !cell.classList.contains('obstacle')) {
+                    cell.textContent = "";
+                    cell.classList.remove('path', 'visited');
+                }
+            });
+        }
+
+        function onCellClick(event) {
+            const cell = event.target;
+            const row = parseInt(cell.dataset.row);
+            const col = parseInt(cell.dataset.col);
+
+            if (mode === "entry") {
+                if (entrySquare) entrySquare.classList.remove('selected');
+                entrySquare = cell;
+                cell.classList.add('selected');
+            } else if (mode === "target") {
+                if (targetSquare) targetSquare.classList.remove('target');
+                targetSquare = cell;
+                cell.classList.add('target');
+            } else if (mode === "obstacle") {
+                if (!cell.classList.contains('obstacle')) {
+                    cell.classList.add('obstacle');
+                    obstacles.add(`${row},${col}`);
+                } else {
+                    cell.classList.remove('obstacle');
+                    obstacles.delete(`${row},${col}`);
+                }
+            }
+        }
+
+        gridElement.addEventListener('click', onCellClick);
+
+        document.getElementById('setEntry').addEventListener('click', () => {
+            mode = "entry";
+        });
+
+        document.getElementById('setTarget').addEventListener('click', () => {
+            mode = "target";
+        });
+
+        document.getElementById('setObstacles').addEventListener('click', () => {
+            mode = "obstacle";
+        });
+
+        document.getElementById('simulate').addEventListener('click', () => {
+            if (!entrySquare || !targetSquare) {
+                alert('Please set both an entry and target square.');
+                return;
+            }
+
+            resetGridClasses();
+            entrySquare.classList.add('selected');
+            targetSquare.classList.add('target');
+
+            const start = [parseInt(entrySquare.dataset.row), parseInt(entrySquare.dataset.col)];
+            const target = [parseInt(targetSquare.dataset.row), parseInt(targetSquare.dataset.col)];
+            const distances = Array.from({ length: rows }, () => Array(cols).fill(Infinity));
+            distances[target[0]][target[1]] = 0;
+
+            const queue = [target];
+
+            while (queue.length > 0) {
+                const [currentRow, currentCol] = queue.shift();
+                const currentDistance = distances[currentRow][currentCol];
+                grid[currentRow][currentCol].textContent = currentDistance;
+
+                const neighbors = [
+                    [currentRow - 1, currentCol],
+                    [currentRow + 1, currentCol],
+                    [currentRow, currentCol - 1],
+                    [currentRow, currentCol + 1]
+                ];
+
+                for (const [newRow, newCol] of neighbors) {
+                    if (
+                        newRow >= 0 && newRow < rows &&
+                        newCol >= 0 && newCol < cols &&
+                        !obstacles.has(`${newRow},${newCol}`) &&
+                        distances[newRow][newCol] === Infinity
+                    ) {
+                        distances[newRow][newCol] = currentDistance + 1;
+                        queue.push([newRow, newCol]);
+                    }
+                }
+            }
+
+            const path = [];
+            let [currentRow, currentCol] = start;
+            while (distances[currentRow][currentCol] !== 0) {
+                path.push([currentRow, currentCol]);
+                const neighbors = [
+                    [currentRow - 1, currentCol],
+                    [currentRow + 1, currentCol],
+                    [currentRow, currentCol - 1],
+                    [currentRow, currentCol + 1]
+                ];
+
+                for (const [newRow, newCol] of neighbors) {
+                    if (
+                        newRow >= 0 && newRow < rows &&
+                        newCol >= 0 && newCol < cols &&
+                        distances[newRow][newCol] < distances[currentRow][currentCol]
+                    ) {
+                        currentRow = newRow;
+                        currentCol = newCol;
+                        break;
+                    }
+                }
+            }
+            path.push(target);
+
+            path.forEach(([r, c]) => {
+                if (!(grid[r][c].classList.contains('target') || grid[r][c].classList.contains('selected') || grid[r][c].classList.contains('obstacle'))) {
+                    grid[r][c].classList.add('path');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
